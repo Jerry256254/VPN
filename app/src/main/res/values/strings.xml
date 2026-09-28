@@ -1,13 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FreeProxyVPN</string>
+    <string name="app_name">KucLab VPN</string>
+    <string name="tagline">Tunel přes živé veřejné proxy</string>
+
+    <!-- Status pill -->
+    <string name="pill_idle">Nepřipojeno</string>
+    <string name="pill_preparing">Skenuji</string>
+    <string name="pill_connected">Připojeno</string>
+    <string name="pill_failed">Chyba</string>
+
+    <!-- Hero -->
+    <string name="hero_idle_title">Tunel je vypnutý</string>
+    <string name="hero_idle_sub">Připoj se a provoz půjde přes živou veřejnou proxy.</string>
+    <string name="hero_preparing_title">Hledám živou proxy</string>
+    <string name="hero_preparing_sub">Ověřuji kandidáty z veřejných listů…</string>
+    <string name="hero_connected_title">Tunel je aktivní</string>
+    <string name="hero_connected_sub">Provoz běží přes uzel níže. Při pádu se sám protočí.</string>
+    <string name="hero_failed_title">Nepodařilo se připojit</string>
+
+    <!-- Cards -->
+    <string name="label_exit_node">Výstupní uzel</string>
+    <string name="node_empty">—</string>
+    <string name="node_meta">%1$s · %2$s</string>
+    <string name="latency_ms">%1$d ms</string>
+    <string name="label_pool">Pool</string>
+    <string name="pool_known">z %1$d známých</string>
+    <string name="pool_idle_hint">pool startuje s připojením</string>
+    <string name="label_log">Protokol</string>
+
+    <!-- Actions -->
     <string name="connect">Připojit</string>
     <string name="disconnect">Odpojit</string>
-    <string name="status_idle">Nepřipojeno</string>
-    <string name="status_scanning">Skenuji proxy listy…</string>
-    <string name="status_connecting">Připojuji…</string>
-    <string name="status_connected">Připojeno přes %1$s (%2$s)</string>
-    <string name="pool_status">Živé proxy v poolu: %1$d</string>
+    <string name="retry">Zkusit znovu</string>
+
+    <string name="footer_note">PoC: provoz prochází přes cizí veřejné proxy. Není to anonymita ani šifrovaná VPN ve smyslu komerčních služeb.</string>
+
+    <!-- Foreground notification -->
     <string name="notif_channel_name">VPN tunel</string>
-    <string name="notif_title">FreeProxyVPN je aktivní</string>
+    <string name="notif_title">KucLab VPN je aktivní</string>
 </resources>

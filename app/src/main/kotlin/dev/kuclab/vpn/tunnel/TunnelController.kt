@@ -1,10 +1,10 @@
-package dev.freeproxyvpn.app.tunnel
+package dev.kuclab.vpn.tunnel
 
 import android.content.Context
 import android.net.LocalServerSocket
 import android.net.LocalSocket
 import android.os.ParcelFileDescriptor
-import dev.freeproxyvpn.app.proxy.ProxyEndpoint
+import dev.kuclab.vpn.proxy.ProxyEndpoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext

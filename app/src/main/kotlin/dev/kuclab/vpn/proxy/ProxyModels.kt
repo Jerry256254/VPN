@@ -1,4 +1,4 @@
-package dev.freeproxyvpn.app.proxy
+package dev.kuclab.vpn.proxy
 
 enum class ProxyProtocol { HTTP, SOCKS4, SOCKS5 }
 

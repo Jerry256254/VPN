@@ -1,4 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#1B2A4A</color>
+    <!-- Base -->
+    <color name="bg_ink">#0B0F14</color>
+    <color name="console_bg">#070A0E</color>
+    <color name="ic_launcher_background">#0B0F14</color>
+
+    <!-- Ambient glows (radial, top-right teal / bottom-left steel) -->
+    <color name="glow_teal">#303FD0BE</color>
+    <color name="glow_teal_mid">#143FD0BE</color>
+    <color name="glow_steel">#1F5E7A8C</color>
+    <color name="glow_steel_mid">#0D5E7A8C</color>
+
+    <!-- The one accent -->
+    <color name="accent">#3FD0BE</color>
+    <color name="accent_ink">#052723</color>
+
+    <!-- Text (single cool-gray family) -->
+    <color name="text_primary">#EDF2F5</color>
+    <color name="text_secondary">#98A4B0</color>
+    <color name="text_faint">#5F6B78</color>
+
+    <!-- Status -->
+    <color name="status_ok">#3FD0BE</color>
+    <color name="status_warn">#DFA851</color>
+    <color name="status_err">#DF6A52</color>
+    <color name="status_idle">#6B7684</color>
+
+    <!-- Glass -->
+    <color name="glass_fill">#14FFFFFF</color>
+    <color name="glass_top_light">#12FFFFFF</color>
+    <color name="glass_stroke">#2BFFFFFF</color>
+
+    <!-- Power button -->
+    <color name="power_off_fill">#10161D</color>
+    <color name="power_off_ring">#2C3844</color>
+    <color name="power_on_fill">#0C2724</color>
+    <color name="power_on_glow">#403FD0BE</color>
+    <color name="power_icon_off">#5F6B78</color>
+
+    <!-- Ghost button -->
+    <color name="btn_ghost_stroke">#38434F</color>
 </resources>

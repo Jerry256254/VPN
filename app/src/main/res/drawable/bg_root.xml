@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/bg_ink" />
+        </shape>
+    </item>
+    <!-- Soft teal aura, top-right -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="640dp"
+                android:centerX="0.88"
+                android:centerY="0.02"
+                android:startColor="@color/glow_teal"
+                android:centerColor="@color/glow_teal_mid"
+                android:endColor="@android:color/transparent" />
+        </shape>
+    </item>
+    <!-- Faint steel aura, bottom-left -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="560dp"
+                android:centerX="0.06"
+                android:centerY="0.98"
+                android:startColor="@color/glow_steel"
+                android:centerColor="@color/glow_steel_mid"
+                android:endColor="@android:color/transparent" />
+        </shape>
+    </item>
+</layer-list>

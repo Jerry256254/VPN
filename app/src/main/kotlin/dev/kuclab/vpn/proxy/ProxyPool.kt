@@ -1,4 +1,4 @@
-package dev.freeproxyvpn.app.proxy
+package dev.kuclab.vpn.proxy
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

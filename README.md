@@ -1,4 +1,7 @@
-# FreeProxyVPN (PoC)
+# KucLab VPN (PoC)
+
+> Hotové APK ke stažení najdeš v [Releases](../../releases) (sekce Assets).
+> Po stažení povol instalaci z neznámých zdrojů a APK nainstaluj.
 
 Android VPN klient, který jako exit servery používá živě skenované veřejné
 free-proxy listy (HTTP/SOCKS4/SOCKS5) místo vlastní serverové infrastruktury.

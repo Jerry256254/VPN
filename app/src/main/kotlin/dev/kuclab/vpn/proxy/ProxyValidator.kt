@@ -1,4 +1,4 @@
-package dev.freeproxyvpn.app.proxy
+package dev.kuclab.vpn.proxy
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

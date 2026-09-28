@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "dev.freeproxyvpn.app"
+    namespace = "dev.kuclab.vpn"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "dev.freeproxyvpn.app"
+        applicationId = "dev.kuclab.vpn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     buildTypes {

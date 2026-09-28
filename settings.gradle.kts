@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FreeProxyVPN"
+rootProject.name = "KucLabVPN"
 include(":app")

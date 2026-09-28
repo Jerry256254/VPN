@@ -1,4 +1,4 @@
-package dev.freeproxyvpn.app.tunnel
+package dev.kuclab.vpn.tunnel
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -7,11 +7,11 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
-import dev.freeproxyvpn.app.R
-import dev.freeproxyvpn.app.proxy.PoolSnapshot
-import dev.freeproxyvpn.app.proxy.ProxyEndpoint
-import dev.freeproxyvpn.app.proxy.ProxyPool
-import dev.freeproxyvpn.app.ui.MainActivity
+import dev.kuclab.vpn.R
+import dev.kuclab.vpn.proxy.PoolSnapshot
+import dev.kuclab.vpn.proxy.ProxyEndpoint
+import dev.kuclab.vpn.proxy.ProxyPool
+import dev.kuclab.vpn.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,8 +32,8 @@ sealed class VpnState {
 class VpnCoreService : VpnService() {
 
     companion object {
-        const val ACTION_CONNECT = "dev.freeproxyvpn.app.action.CONNECT"
-        const val ACTION_DISCONNECT = "dev.freeproxyvpn.app.action.DISCONNECT"
+        const val ACTION_CONNECT = "dev.kuclab.vpn.action.CONNECT"
+        const val ACTION_DISCONNECT = "dev.kuclab.vpn.action.DISCONNECT"
         private const val CHANNEL_ID = "vpn_tunnel"
         private const val NOTIF_ID = 1
 
@@ -149,7 +149,7 @@ class VpnCoreService : VpnService() {
 
     private fun establishTun(): ParcelFileDescriptor? = try {
         Builder()
-            .setSession("FreeProxyVPN")
+            .setSession("KucLab VPN")
             .addAddress("10.111.222.1", 24)
             .addRoute("0.0.0.0", 0)
             .addDnsServer("1.1.1.1")
@@ -197,7 +197,7 @@ class VpnCoreService : VpnService() {
         return Notification.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.ic_lock_lock)
+            .setSmallIcon(R.drawable.ic_stat_vpn)
             .setContentIntent(openIntent)
             .setOngoing(true)
             .build()

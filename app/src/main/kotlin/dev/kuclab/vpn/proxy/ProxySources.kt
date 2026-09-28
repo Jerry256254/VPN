@@ -1,4 +1,4 @@
-package dev.freeproxyvpn.app.proxy
+package dev.kuclab.vpn.proxy
 
 enum class ListFormat { PLAIN_IP_PORT, GEONODE_JSON }
 

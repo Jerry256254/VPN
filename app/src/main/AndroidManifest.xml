@@ -12,7 +12,7 @@
         android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.FreeProxyVpn">
+        android:theme="@style/Theme.KucLabVpn">
 
         <activity
             android:name=".ui.MainActivity"
