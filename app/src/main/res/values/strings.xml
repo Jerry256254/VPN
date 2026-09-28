@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FreeProxyVPN</string>
+    <string name="connect">Připojit</string>
+    <string name="disconnect">Odpojit</string>
+    <string name="status_idle">Nepřipojeno</string>
+    <string name="status_scanning">Skenuji proxy listy…</string>
+    <string name="status_connecting">Připojuji…</string>
+    <string name="status_connected">Připojeno přes %1$s (%2$s)</string>
+    <string name="pool_status">Živé proxy v poolu: %1$d</string>
+    <string name="notif_channel_name">VPN tunel</string>
+    <string name="notif_title">FreeProxyVPN je aktivní</string>
+</resources>

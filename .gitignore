@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local configuration (machine-specific paths)
+local.properties
+
+# Kotlin incremental compilation caches
+.kotlin/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Signing keys - never commit
+*.jks
+*.keystore
+
+# OS
+.DS_Store
+Thumbs.db
