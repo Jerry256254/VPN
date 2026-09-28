@@ -8,10 +8,8 @@ import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
 import dev.kuclab.vpn.R
-import dev.kuclab.vpn.proxy.PoolSnapshot
-import dev.kuclab.vpn.proxy.ProxyEndpoint
-import dev.kuclab.vpn.proxy.ProxyPool
 import dev.kuclab.vpn.ui.MainActivity
+import dev.kuclab.vpn.warp.WarpStats
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,11 +19,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 sealed class VpnState {
     data object Idle : VpnState()
     data object Preparing : VpnState()
-    data class Connected(val proxy: ProxyEndpoint) : VpnState()
+    data class Connected(
+        val endpoint: String,
+        val resolvedIp: String,
+        val accountShort: String,
+    ) : VpnState()
     data class Failed(val reason: String) : VpnState()
 }
 
@@ -40,21 +46,21 @@ class VpnCoreService : VpnService() {
         private val _state = MutableStateFlow<VpnState>(VpnState.Idle)
         val state = _state.asStateFlow()
 
-        private val _pool = MutableStateFlow<PoolSnapshot?>(null)
-        val poolSnapshot = _pool.asStateFlow()
+        private val _stats = MutableStateFlow<WarpStats?>(null)
+        val stats = _stats.asStateFlow()
 
-        private val _log = MutableStateFlow("")
+        private val _log = MutableStateFlow("[BOOT] kuclab vpn-01 // wireguard core ready")
         val log = _log.asStateFlow()
 
-        private const val MAX_ATTEMPTS_PER_CONNECT = 6
+        private const val MAX_ATTEMPTS = 6
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var vpnInterface: ParcelFileDescriptor? = null
-    private var pool: ProxyPool? = null
     private var tunnel: TunnelController? = null
-    private val excluded = mutableSetOf<String>()
-    private var poolLogJob: Job? = null
+    private var connectJob: Job? = null
+    private var consecutiveFailures = 0
+    private var reEnrolled = false
 
     override fun onCreate() {
         super.onCreate()
@@ -82,66 +88,70 @@ class VpnCoreService : VpnService() {
     private fun connect() {
         if (_state.value is VpnState.Connected || _state.value is VpnState.Preparing) return
         _state.value = VpnState.Preparing
-        startForeground(NOTIF_ID, buildNotification("Skenuji proxy listy…"))
-        excluded.clear()
-
-        val p = ProxyPool(scope).also { pool = it }
-        p.start()
-        poolLogJob?.cancel()
-        poolLogJob = scope.launch {
-            p.snapshot.collect { _pool.value = it }
-        }
-        scope.launch { p.log.collect { _log.value = it } }
-
-        scope.launch {
-            val ok = connectLoop(p)
-            if (!ok) {
-                _state.value = VpnState.Failed("Nepodařilo se najít žádnou funkční proxy")
-                stopForegroundAndSelf()
-            }
-        }
+        _stats.value = null
+        consecutiveFailures = 0
+        reEnrolled = false
+        startForeground(NOTIF_ID, buildNotification(getString(R.string.notif_connecting)))
+        connectJob?.cancel()
+        connectJob = scope.launch { connectLoop() }
     }
 
-    private suspend fun connectLoop(p: ProxyPool): Boolean {
-        var attempt = 0
-        while (attempt < MAX_ATTEMPTS_PER_CONNECT) {
-            attempt++
-            val proxy = p.awaitFirstLive(timeoutMs = 60_000) ?: return false
-            if (proxy.key in excluded) {
-                delay(1000)
-                continue
-            }
-            val fd = vpnInterface ?: establishTun().also { vpnInterface = it } ?: return false
-
-            val controller = TunnelController(this) { event -> handleTunnelEvent(event) }
-            tunnel = controller
-            val started = controller.start(fd, proxy)
-            if (started) {
-                _state.value = VpnState.Connected(proxy)
-                updateNotification("Připojeno přes ${proxy.protocol} ${proxy.host}:${proxy.port}")
-                return true
-            } else {
-                excluded += proxy.key
+    private suspend fun connectLoop() {
+        if (vpnInterface == null) {
+            vpnInterface = establishTun()
+            if (vpnInterface == null) {
+                _state.value = VpnState.Failed("Nepodařilo se vytvořit TUN rozhraní")
+                stopForegroundAndSelf()
+                return
             }
         }
-        return false
+        val fd = vpnInterface ?: return
+
+        while (consecutiveFailures < MAX_ATTEMPTS) {
+            if (!reEnrolled && consecutiveFailures == 3) {
+                reEnrolled = true
+                appendLog("3 pokusy selhaly, rotuji warp identitu…")
+                try {
+                    File(filesDir, "warp/warp.json").delete()
+                } catch (_: Throwable) {
+                }
+            }
+            val controller = TunnelController(this, ::handleTunnelEvent)
+            tunnel = controller
+            if (controller.start(fd)) {
+                consecutiveFailures = 0
+                val cfg = controller.config
+                _state.value = VpnState.Connected(
+                    endpoint = cfg?.endpoint ?: "—",
+                    resolvedIp = controller.resolvedEndpoint.ifEmpty { "—" },
+                    accountShort = cfg?.shortAccount ?: "—",
+                )
+                updateNotification(getString(R.string.notif_connected, cfg?.endpoint ?: ""))
+                return
+            }
+            consecutiveFailures++
+            tunnel = null
+            delay(2000L * consecutiveFailures)
+        }
+
+        _state.value = VpnState.Failed("Tunel se nedaří navázat ani udržet")
+        stopForegroundAndSelf()
     }
 
     private fun handleTunnelEvent(event: TunnelEvent) {
         when (event) {
-            is TunnelEvent.Log -> _log.value = (_log.value + "\n" + event.line).takeLast(8000)
+            is TunnelEvent.Log -> appendLog(event.line)
+            is TunnelEvent.Stats -> _stats.value = event.stats
             is TunnelEvent.Exited -> {
-                _log.value = (_log.value + "\ntunnel exited (code ${event.exitCode}), rotating proxy").takeLast(8000)
-                excluded += event.proxy.key
+                appendLog("tunnel exited (code ${event.exitCode})")
+                _stats.value = null
                 if (_state.value is VpnState.Connected) {
-                    val p = pool ?: return
-                    scope.launch {
-                        val ok = connectLoop(p)
-                        if (!ok) {
-                            _state.value = VpnState.Failed("Všechny dostupné proxy selhaly")
-                            stopForegroundAndSelf()
-                        }
-                    }
+                    // Dropped mid-session: rotate back through the loop honestly
+                    // showing ESTABLISHING, not a stale CONNECTED.
+                    _state.value = VpnState.Preparing
+                    consecutiveFailures++
+                    connectJob?.cancel()
+                    connectJob = scope.launch { connectLoop() }
                 }
             }
         }
@@ -154,21 +164,20 @@ class VpnCoreService : VpnService() {
             .addRoute("0.0.0.0", 0)
             .addDnsServer("1.1.1.1")
             .addDnsServer("9.9.9.9")
-            .setMtu(1500)
+            .setMtu(1280)
             .establish()
     } catch (t: Throwable) {
-        _log.value = (_log.value + "\nfailed to establish TUN: ${t.message}").takeLast(8000)
+        appendLog("failed to establish TUN: ${t.message}")
         null
     }
 
     private fun disconnect() {
+        connectJob?.cancel()
         tunnel?.stop()
         tunnel = null
-        pool?.stop()
-        pool = null
-        poolLogJob?.cancel()
         vpnInterface?.let { try { it.close() } catch (_: Throwable) {} }
         vpnInterface = null
+        _stats.value = null
         _state.value = VpnState.Idle
         stopForegroundAndSelf()
     }
@@ -176,6 +185,11 @@ class VpnCoreService : VpnService() {
     private fun stopForegroundAndSelf() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    private fun appendLog(line: String) {
+        val stamp = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+        _log.value = (_log.value + "\n[$stamp] $line").takeLast(8000)
     }
 
     private fun ensureNotificationChannel() {

@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/bg_root">
+    android:background="@color/bg">
 
     <ScrollView
         android:layout_width="0dp"
@@ -12,7 +12,7 @@
         android:overScrollMode="never"
         android:scrollbars="none"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/connectButton"
+        app:layout_constraintBottom_toTopOf="@id/engageButton"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -20,247 +20,399 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingStart="20dp"
-            android:paddingTop="20dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="12dp">
+            android:padding="16dp">
 
-            <!-- Header: mark + wordmark + live status pill -->
+            <!-- Unit strip -->
             <LinearLayout
-                android:id="@+id/headerRow"
+                android:id="@+id/unitRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
-                <ImageView
-                    android:layout_width="34dp"
-                    android:layout_height="34dp"
-                    android:contentDescription="@string/app_name"
-                    app:srcCompat="@drawable/ic_mark" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
+                    android:text="@string/unit_tag"
+                    android:textColor="@color/faint"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
 
-                <LinearLayout
+                <TextView
+                    android:id="@+id/revText"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
                     android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="@string/app_name"
-                        android:textColor="@color/text_primary"
-                        android:textSize="17sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="1dp"
-                        android:text="@string/tagline"
-                        android:textColor="@color/text_faint"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/pill_status"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="11dp"
-                    android:paddingTop="7dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="7dp">
-
-                    <View
-                        android:id="@+id/statusDot"
-                        android:layout_width="8dp"
-                        android:layout_height="8dp"
-                        android:background="@drawable/dot_status"
-                        android:backgroundTint="@color/status_idle" />
-
-                    <TextView
-                        android:id="@+id/statusPillText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="7dp"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="@string/pill_idle"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12sp" />
-                </LinearLayout>
+                    android:fontFamily="monospace"
+                    android:gravity="end"
+                    android:letterSpacing="0.1"
+                    android:textColor="@color/faint"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
-            <!-- Hero glass card -->
-            <LinearLayout
-                android:id="@+id/heroCard"
-                android:layout_width="match_parent"
+            <!-- Macro title -->
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:background="@drawable/card_glass"
-                android:gravity="center_horizontal"
-                android:orientation="vertical"
-                android:padding="26dp">
+                android:layout_marginTop="10dp"
+                android:fontFamily="sans-serif"
+                android:letterSpacing="-0.04"
+                android:lineSpacingExtra="-6sp"
+                android:text="@string/macro_title"
+                android:textColor="@color/phosphor"
+                android:textSize="44sp"
+                android:textStyle="bold" />
 
-                <androidx.appcompat.widget.AppCompatImageButton
-                    android:id="@+id/powerButton"
-                    android:layout_width="92dp"
-                    android:layout_height="92dp"
-                    android:background="@drawable/btn_power"
-                    android:contentDescription="@string/connect"
-                    android:foreground="?attr/selectableItemBackgroundBorderless"
-                    android:padding="26dp"
-                    android:scaleType="fitCenter"
-                    app:srcCompat="@drawable/ic_power"
-                    app:tint="@color/power_icon_off" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.08"
+                android:text="@string/macro_sub"
+                android:textColor="@color/dim"
+                android:textSize="10sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/statusHeadline"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:fontFamily="sans-serif-medium"
-                    android:gravity="center"
-                    android:text="@string/hero_idle_title"
-                    android:textColor="@color/text_primary"
-                    android:textSize="22sp" />
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="2dp"
+                android:layout_marginTop="12dp"
+                android:background="@color/red" />
 
-                <TextView
-                    android:id="@+id/statusSubline"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:gravity="center"
-                    android:text="@string/hero_idle_sub"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <!-- Stats row -->
+            <!-- Link panel -->
             <LinearLayout
-                android:id="@+id/statsRow"
+                android:id="@+id/linkPanel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:orientation="horizontal">
+                android:background="@drawable/panel"
+                android:orientation="vertical"
+                android:padding="16dp">
 
                 <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginEnd="6dp"
-                    android:layout_weight="1.35"
-                    android:background="@drawable/card_glass_small"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/lamp"
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@drawable/lamp"
+                        android:backgroundTint="@color/faint" />
 
                     <TextView
+                        android:id="@+id/linkState"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:letterSpacing="0.12"
-                        android:text="@string/label_exit_node"
-                        android:textColor="@color/text_faint"
-                        android:textSize="10sp"
+                        android:layout_marginStart="12dp"
+                        android:fontFamily="sans-serif"
+                        android:letterSpacing="-0.02"
+                        android:text="@string/link_down"
+                        android:textColor="@color/faint"
+                        android:textSize="20sp"
                         android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/nodeHost"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:ellipsize="middle"
-                        android:fontFamily="monospace"
-                        android:maxLines="1"
-                        android:text="@string/node_empty"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/nodeMeta"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="monospace"
-                        android:text="@string/node_empty"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
                 </LinearLayout>
 
+                <TextView
+                    android:id="@+id/linkSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/sub_idle"
+                    android:textColor="@color/dim"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- Readout grid -->
+            <LinearLayout
+                android:id="@+id/readoutPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/panel"
+                android:orientation="vertical">
+
                 <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:background="@drawable/card_glass_small"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:gravity="center_vertical"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:orientation="horizontal"
+                    android:padding="12dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:letterSpacing="0.12"
-                        android:text="@string/label_pool"
-                        android:textColor="@color/text_faint"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.1"
+                        android:text="@string/label_endpoint"
+                        android:textColor="@color/faint"
                         android:textSize="10sp"
                         android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/poolCount"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/endpointVal"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:fontFamily="sans-serif-medium"
-                        android:text="0"
-                        android:textColor="@color/text_primary"
-                        android:textSize="26sp" />
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:ellipsize="middle"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:singleLine="true"
+                        android:text="@string/dash"
+                        android:textColor="@color/phosphor"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/line" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
 
                     <TextView
-                        android:id="@+id/poolSub"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/pool_idle_hint"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.1"
+                        android:text="@string/label_relay"
+                        android:textColor="@color/faint"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/relayVal"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:ellipsize="middle"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:singleLine="true"
+                        android:text="@string/dash"
+                        android:textColor="@color/phosphor"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/line" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.1"
+                        android:text="@string/label_protocol"
+                        android:textColor="@color/faint"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:text="@string/proto_val"
+                        android:textColor="@color/phosphor"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/line" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.1"
+                        android:text="@string/label_handshake"
+                        android:textColor="@color/faint"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/handshakeVal"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:text="@string/dash"
+                        android:textColor="@color/phosphor"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/line" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.1"
+                        android:text="@string/label_rx"
+                        android:textColor="@color/faint"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/rxVal"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:text="@string/dash"
+                        android:textColor="@color/phosphor"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/line" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.1"
+                        android:text="@string/label_tx"
+                        android:textColor="@color/faint"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/txVal"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:text="@string/dash"
+                        android:textColor="@color/phosphor"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/line" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:letterSpacing="0.1"
+                        android:text="@string/label_account"
+                        android:textColor="@color/faint"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/accountVal"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:fontFamily="monospace"
+                        android:gravity="end"
+                        android:text="@string/dash"
+                        android:textColor="@color/phosphor"
+                        android:textSize="13sp" />
                 </LinearLayout>
             </LinearLayout>
 
             <!-- Log console -->
             <LinearLayout
-                android:id="@+id/logCard"
+                android:id="@+id/logPanel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/card_glass_small"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/console"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="12dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:letterSpacing="0.12"
+                    android:fontFamily="monospace"
+                    android:letterSpacing="0.1"
                     android:text="@string/label_log"
-                    android:textColor="@color/text_faint"
+                    android:textColor="@color/faint"
                     android:textSize="10sp"
                     android:textStyle="bold" />
 
                 <ScrollView
                     android:id="@+id/logScroll"
                     android:layout_width="match_parent"
-                    android:layout_height="170dp"
-                    android:layout_marginTop="10dp"
-                    android:background="@color/console_bg"
-                    android:clipToPadding="false"
-                    android:padding="10dp">
+                    android:layout_height="160dp"
+                    android:layout_marginTop="8dp">
 
                     <TextView
                         android:id="@+id/logText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:fontFamily="monospace"
-                        android:textColor="@color/text_secondary"
+                        android:textColor="@color/dim"
                         android:textSize="11sp" />
                 </ScrollView>
             </LinearLayout>
@@ -268,29 +420,31 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="12dp"
+                android:fontFamily="monospace"
                 android:gravity="center"
-                android:text="@string/footer_note"
-                android:textColor="@color/text_faint"
-                android:textSize="11sp" />
+                android:text="@string/footer"
+                android:textColor="@color/faint"
+                android:textSize="9sp" />
         </LinearLayout>
     </ScrollView>
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/connectButton"
+        android:id="@+id/engageButton"
         style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp"
-        android:fontFamily="sans-serif-medium"
-        android:minHeight="56dp"
-        android:text="@string/connect"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:fontFamily="monospace"
+        android:minHeight="60dp"
+        android:text="@string/engage"
         android:textAllCaps="false"
-        android:textSize="16sp"
-        app:backgroundTint="@color/accent"
-        app:cornerRadius="16dp"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:backgroundTint="@color/red"
+        app:cornerRadius="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

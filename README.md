@@ -1,88 +1,77 @@
-# KucLab VPN (PoC)
+# KucLab VPN
 
 > Hotové APK ke stažení najdeš v [Releases](../../releases) (sekce Assets).
 > Po stažení povol instalaci z neznámých zdrojů a APK nainstaluj.
 
-Android VPN klient, který jako exit servery používá živě skenované veřejné
-free-proxy listy (HTTP/SOCKS4/SOCKS5) místo vlastní serverové infrastruktury.
-Sestaveno a **ověřeno, že se skutečně kompiluje do instalovatelného APK**
-(`app/build/outputs/apk/debug/app-debug.apk`, `./gradlew assembleDebug` proběhlo
-úspěšně se skutečným Android SDK). **Nebylo ale odzkoušeno na reálném
-zařízení/emulátoru** – v tomto prostředí není adb ani emulátor, takže běhové
-chování (skutečné připojení, propustnost, chování Android VPN frameworku na
-konkrétním výrobci/verzi) nikdo neověřil. Ber to jako solidní, ale netestovaný
-na-zařízení PoC.
+Android VPN klient: skutečný WireGuard tunel na bezplatný Cloudflare WARP
+relay. Žádný účet, žádný e-mail, žádná osobní metadata k používání potřeba —
+aplikace si při prvním spuštění sama zaregistruje anonymní WARP identitu přes
+stejné enrollment API, jaké používá oficiální klient 1.1.1.1 (stejný postup
+jako open-source nástroj `wgcf`).
+
+Sestaveno a **ověřeno, že se kompiluje do instalovatelného APK**.
+Transportní jádro je end-to-end otestované proti živému WARP relay
+(handshake + reálný TCP provoz tunelem, viz níže). **Nebylo ale odzkoušeno
+na reálném zařízení/emulátoru** – v tomto prostředí není adb ani emulátor,
+takže chování Android `VpnService` na konkrétním výrobci/verzi nikdo
+neověřil. Ber to jako funkční, ale na-zařízení netestovaný build.
 
 ## Jak to funguje
 
-- **Proxy pool** (`proxy/`): stahuje kandidáty z několika veřejných zdrojů
-  (TheSpeedX, ShiftyTR, clarketm, proxyscrape.com, geonode.com), ověřuje
-  živost skutečným TCP/HTTP handshake (ne jen tomu, co tvrdí zdrojový list),
-  a **přeskenovává pool každé 3 minuty** – ve free proxy listech typicky
-  desítky procent položek umírá během minut až hodin, takže jednorázový
-  scan nestačí.
-- **Tunelové jádro**: [`xjasonlyu/tun2socks`](https://github.com/xjasonlyu/tun2socks)
-  (gVisor netstack, MIT licence) – zkompilováno jako statický Go binární
-  soubor pro `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`, bez potřeby
-  Android NDK. Umí nativně směrovat přes `socks5://`, `socks4://` i
-  `http://` upstream proxy.
-- **fdbridge** (`app/src/main/kotlin/.../tunnel/TunnelController.kt` +
-  vlastní Go program v `fdbridge/`): Android `VpnService` dá TUN file
-  descriptor jen appce samotné, ne libovolnému spuštěnému procesu.
-  `fdbridge` je malý čistě-Go program, který ten fd přijme od Kotlin kódu
-  přes `LocalSocket`/`SCM_RIGHTS` (stejná technika jako u Clash for
-  Android/Matsuri) a pak se `exec`-ne do `tun2socks` s tím fd. **Tento
-  mechanismus je reálně otestován** end-to-end (viz níže) mimo tuto appku,
-  jen ne uvnitř skutečného Android VpnService.
-- **VpnCoreService**: Android `VpnService`, foreground notifikace, vybere
-  nejlepší živou proxy z poolu, spustí tunel, a při pádu/úmrtí proxy
-  automaticky rotuje na další (proxy servery umírají za pochodu, ne jen
-  při startu).
+- **WARP enrollment** (`wgtunnel register`): vygeneruje X25519 klíčový pár,
+  zaregistruje ho na `api.cloudflareclient.com` a uloží vrácené WireGuard
+  údaje (peer klíč, endpoint `engage.cloudflareclient.com:2408`, adresy
+  rozhraní). Jedna identita na instalaci, uložená v privátním úložišti
+  aplikace. Při opakovaných pádech tunelu se identita sama zrotuje.
+- **Tunelové jádro** (`wgtunnel run`): `wireguard-go` userspace device
+  (oficiální Go implementace WireGuardu, stejná, jakou používá oficiální
+  WireGuard aplikace pro Android) běžící nad TUN file deskriptorem, který mu
+  Kotlin kód předá přes `LocalSocket`/`SCM_RIGHTS` (stejná technika jako
+  Clash for Android / Matsuri). Statická Go binárka pro `arm64-v8a`,
+  `armeabi-v7a`, `x86`, `x86_64`, bez potřeby Android NDK. Tunel nese TCP
+  **i UDP** (tedy i DNS), persistent keepalive 25 s, MTU 1280.
+- **VpnCoreService**: Android `VpnService`, foreground notifikace, route
+  `0.0.0.0/0` přes tunel, DNS `1.1.1.1` + `9.9.9.9` (tečou tunelem),
+  automatické znovunavázání při pádu procesu tunelu.
+- **UI**: stav linky, endpoint, relay IP, stáří handshaku, RX/TX počítadla
+  (reálné čítače z WireGuard device, obnovované každé 2 s) a živý log.
 
-## Co bylo skutečně otestováno v tomto prostředí (a co ne)
+## Co bylo skutečně otestováno (a co ne)
 
-✅ `tun2socks` binárka se zkompilovala pro všechny 4 ABI a spustitelný
-   `--help` výstup potvrzuje podporu `--device fd://N` a `--proxy socks5://…|http://…`.
-✅ `fdbridge` mechanismus (SCM_RIGHTS předání fd přes abstract unix socket →
-   `exec` → dítě čte z zděděného fd) byl end-to-end odzkoušen samostatným
-   testem (`fdbridge/testsrv`) – funguje přesně jak má.
-✅ SOCKS5 UDP ASSOCIATE handshake (`Socks5UdpDnsProbe.kt`) byl ověřen proti
-   20 živým veřejným SOCKS5 proxy z reálného listu – protokol je
-   implementován správně (dostáváme validní SOCKS5 odpovědi), ale **žádná
-   z 20 testovaných veřejných SOCKS5 proxy ve skutečnosti UDP ASSOCIATE
-   nepodporovala**. To je důležité zjištění, ne jen teoretická obava.
+✅ `register` proti živému WARP API – vrací platnou identitu a peer údaje.
+✅ `check` (součást binárky): reálný WireGuard handshake s
+   `162.159.192.1:2408` + reálný HTTP požadavek tunelem na `1.1.1.1`
+   (`CHECK-PASS`, ověřeno na tomto stroji).
+✅ Předání fd přes abstract unix socket (`recvcheck` + `wgtunnel/fdcheck.py`)
+   – mechanismus použitý na Androidu pro TUN fd.
 ✅ Celý Android projekt se zkompiloval (`./gradlew assembleDebug`) do
-   funkčního, korektně podepsaného debug APK se všemi natívními knihovnami
-   zabalenými a manifestem obsahujícím `VpnService`.
+   funkčního, korektně podepsaného debug APK se všemi nativními binárkami
+   a manifestem obsahujícím `VpnService`.
 ❌ Appka nebyla nainstalována ani spuštěna na skutečném Android zařízení
-   nebo emulátoru – tady žádný nebyl k dispozici. Reálné chování
-   `VpnService.Builder().establish()`, chování OEM battery-optimization na
-   pozadí, a end-to-end propustnost provozu **nejsou ověřené**.
+   nebo emulátoru. Reálné chování `VpnService.Builder().establish()`,
+   chování OEM battery-optimalizací a end-to-end propustnost na zařízení
+   **nejsou ověřené**.
 
-## Vážná omezení, o kterých bys měl vědět (ne jen formalita)
+## Soukromí a omezení – čti před použitím
 
-1. **Bezpečnost proti operátorovi proxy serveru**: pro cíle přes HTTP proxy
-   (drtivá většina veřejných listů) je provoz šifrovaný jen do té míry, do
-   jaké cílová stránka používá HTTPS. Operátor proxy je typicky neznámý
-   subjekt – u volně sesbíraných proxy je nezanedbatelná šance, že jde o
-   kompromitovaný stroj, honeypot sbírající provoz, nebo server záměrně
-   provozovaný pro MITM. „Šifrovaný VPN tunel" v marketingovém smyslu to
-   není – je to jen řetězec nedůvěryhodných relay uzlů.
-2. **DNS únik / nefunkčnost**: jak je vidět v testu výše, HTTP proxy neumí
-   přenášet UDP vůbec a naprostá většina veřejných SOCKS5 proxy UDP
-   ASSOCIATE ve skutečnosti nepodporuje. `ProxyValidator` proto preferuje
-   uzly s potvrzenou DNS schopností, ale realisticky bude většina relací
-   běžet jen s DNS řešeným přes proxy operátora (pokud vůbec) – nasaď jen
-   pokud s tím počítáš.
-3. **Právní/ToS rovina**: scraping a připojování se přes cizí, často
-   neautorizované open proxy je v šedé zóně – řada z nich běží na
-   zařízeních, kde majitel o roli "veřejné proxy" vůbec neví (odcizené
-   routery/IoT). Distribuce takové appky (Play Store) by pravděpodobně
-   narazila na politiku VPN služeb i na odpovědnost za provoz přes cizí
-   infrastrukturu.
-4. **Bez rate-limitingu/autentizace zdrojů** – žádný z použitých veřejných
-   listů negarantuje SLA ani nemá API klíč; při větším provozu tě mohou
-   zdrojové servery rate-limitovat nebo blokovat.
+1. **Relay provozuje Cloudflare.** Veškerý provoz tunelu jde přes jejich
+   WARP infrastrukturu (free tier). Cloudflare o sobě tvrdí, že obsah
+   neprodává a provozní data minimalizuje ([1.1.1.1 privacy
+   policy](https://www.cloudflare.com/application/privacypolicy/)), ale
+   technicky relay vidí toky jako každý jiný VPN operátor. „Zcela bez
+   metadat" není žádný free relay na světě – tady aspoň není potřeba účet
+   ani e-mail a operátor je známá firma, ne náhodný honeypot.
+2. **WARP není anonymizační síť** (na rozdíl od Toru). Skryje provoz před
+   lokální sítí a poskytovatelem připojení, ale není stavěný na anonymitu.
+3. **Free tier bez SLA.** Cloudflare může enrollment API rate-limitovat
+   nebo měnit; endpointy a porty se mohou časem měnit (aplikace bere
+   endpoint z registrační odpovědi a umí fallback).
+4. **Historie:** do v0.2.0 aplikace stavěla na živě skenovaných veřejných
+   proxy + tun2socks. To se ukázalo jako slepá ulička: veřejné HTTP proxy
+   neumí UDP vůbec (`DialUDP` vrací `errors.ErrUnsupported` – odtud
+   `unsupported operation` v logu) a test ukázal, že UDP ASSOCIATE neumí
+   ani naprostá většina veřejných SOCKS5. Bez UDP nefunguje DNS a tunel je
+   prakticky mrtvý. Proto v0.3.0 přešlo na WireGuard + WARP.
 
 ## Sestavení
 
@@ -97,15 +86,21 @@ Vyžaduje JDK 17 (viz `gradle.properties` → `org.gradle.java.home`, uprav dle
 svého systému) a Android SDK s `platforms;android-34` a
 `build-tools;35.0.0` (nebo novější).
 
-## Přebuild nativních binárek
+## Přebuild nativního jádra
 
-Zdroj pro `fdbridge` je v `fdbridge/` (mimo Gradle strom, čistý Go modul).
-`tun2socks` je nezměněný upstream z `github.com/xjasonlyu/tun2socks`. Obě
-jsou statické Go binárky bez cgo, takže je lze přebuildovat bez NDK:
+Zdroj je v `wgtunnel/` (mimo Gradle strom, čistý Go modul). Statické
+binárky bez cgo, takže jdou přebuildovat bez NDK:
 
 ```
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o app/src/main/jniLibs/arm64-v8a/libtun2socks.so .
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o app/src/main/jniLibs/arm64-v8a/libfdbridge.so ./fdbridge
+cd wgtunnel
+CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o ../app/src/main/jniLibs/arm64-v8a/libwgtunnel.so .
 ```
 
-Analogicky pro `armeabi-v7a` (`GOARCH=arm GOARM=7`), `x86` (`GOARCH=386`), `x86_64`.
+Analogicky pro `armeabi-v7a` (`GOARCH=arm GOARM=7`), `x86` (`GOARCH=386`),
+`x86_64`. Self-test po přebuildu:
+
+```
+go build -o /tmp/wgtunnel . && /tmp/wgtunnel register > /tmp/warp.json \
+  && /tmp/wgtunnel check --config /tmp/warp.json   # CHECK-PASS = OK
+./fdcheck.py /tmp/wgtunnel                          # FDCHECK-PASS = OK
+```

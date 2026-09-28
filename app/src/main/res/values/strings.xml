@@ -1,41 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">KucLab VPN</string>
-    <string name="tagline">Tunel přes živé veřejné proxy</string>
+    <string name="unit_tag">UNIT VPN-01</string>
+    <string name="macro_title">KUC LAB</string>
+    <string name="macro_sub">VPN-01 // WIREGUARD FIELD TUNNEL</string>
 
-    <!-- Status pill -->
-    <string name="pill_idle">Nepřipojeno</string>
-    <string name="pill_preparing">Skenuji</string>
-    <string name="pill_connected">Připojeno</string>
-    <string name="pill_failed">Chyba</string>
+    <string name="link_down">LINK: DOWN</string>
+    <string name="link_est">LINK: ESTABLISHING</string>
+    <string name="link_up">LINK: UP</string>
+    <string name="link_fault">LINK: FAULT</string>
 
-    <!-- Hero -->
-    <string name="hero_idle_title">Tunel je vypnutý</string>
-    <string name="hero_idle_sub">Připoj se a provoz půjde přes živou veřejnou proxy.</string>
-    <string name="hero_preparing_title">Hledám živou proxy</string>
-    <string name="hero_preparing_sub">Ověřuji kandidáty z veřejných listů…</string>
-    <string name="hero_connected_title">Tunel je aktivní</string>
-    <string name="hero_connected_sub">Provoz běží přes uzel níže. Při pádu se sám protočí.</string>
-    <string name="hero_failed_title">Nepodařilo se připojit</string>
+    <string name="sub_idle">Tunel je dole. Provoz teče napřímo.</string>
+    <string name="sub_est">Navazuji šifrované spojení…</string>
+    <string name="sub_up">Veškerý provoz jde tunelem.</string>
 
-    <!-- Cards -->
-    <string name="label_exit_node">Výstupní uzel</string>
-    <string name="node_empty">—</string>
-    <string name="node_meta">%1$s · %2$s</string>
-    <string name="latency_ms">%1$d ms</string>
-    <string name="label_pool">Pool</string>
-    <string name="pool_known">z %1$d známých</string>
-    <string name="pool_idle_hint">pool startuje s připojením</string>
-    <string name="label_log">Protokol</string>
+    <string name="label_endpoint">ENDPOINT</string>
+    <string name="label_relay">RELAY</string>
+    <string name="label_protocol">PROTOKOL</string>
+    <string name="proto_val">WIREGUARD</string>
+    <string name="label_handshake">HANDSHAKE</string>
+    <string name="label_rx">RX</string>
+    <string name="label_tx">TX</string>
+    <string name="label_account">IDENTITA</string>
+    <string name="label_log">LOG</string>
+    <string name="dash">—</string>
 
-    <!-- Actions -->
-    <string name="connect">Připojit</string>
-    <string name="disconnect">Odpojit</string>
-    <string name="retry">Zkusit znovu</string>
+    <string name="engage">>>> NAVÁZAT SPOJENÍ</string>
+    <string name="cut">■ PŘERUŠIT SPOJENÍ</string>
+    <string name="retry">>>> OPAKOVAT POKUS</string>
 
-    <string name="footer_note">PoC: provoz prochází přes cizí veřejné proxy. Není to anonymita ani šifrovaná VPN ve smyslu komerčních služeb.</string>
+    <string name="footer">KUC_LAB SYSTEMS © — FIELD BUILD. RELAY: CLOUDFLARE WARP / FREE TIER.</string>
 
-    <!-- Foreground notification -->
     <string name="notif_channel_name">VPN tunel</string>
     <string name="notif_title">KucLab VPN je aktivní</string>
+    <string name="notif_connecting">Navazuji spojení…</string>
+    <string name="notif_connected">Tunel aktivní přes %1$s</string>
 </resources>

@@ -4,27 +4,21 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Blocky K: stem + two diagonal bars, phosphor on CRT black -->
     <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#3FD0BE"
-        android:strokeWidth="4"
-        android:pathData="M20,54 a34,34 0 1,1 68,0 a34,34 0 1,1 -68,0" />
+        android:fillColor="#EAEAEA"
+        android:pathData="M42,26 h12 v46 h-12 z" />
     <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#EDF2F5"
-        android:strokeWidth="7"
-        android:strokeLineCap="round"
-        android:pathData="M47,40 L47,68" />
+        android:fillColor="#EAEAEA"
+        android:pathData="M54,44 L82,24 L82,36 L54,56 z" />
     <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#EDF2F5"
-        android:strokeWidth="7"
-        android:strokeLineCap="round"
-        android:pathData="M65,42 L49,53" />
+        android:fillColor="#EAEAEA"
+        android:pathData="M56,50 L84,72 L72,72 L54,58 z" />
+    <!-- Registration square + structural red baseline -->
     <path
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#EDF2F5"
-        android:strokeWidth="7"
-        android:strokeLineCap="round"
-        android:pathData="M52,57 L65,66" />
+        android:fillColor="#E61919"
+        android:pathData="M22,26 h10 v10 h-10 z" />
+    <path
+        android:fillColor="#E61919"
+        android:pathData="M22,80 h64 v6 h-64 z" />
 </vector>

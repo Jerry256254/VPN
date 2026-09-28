@@ -11,7 +11,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -21,22 +20,24 @@ import com.google.android.material.button.MaterialButton
 import dev.kuclab.vpn.R
 import dev.kuclab.vpn.tunnel.VpnCoreService
 import dev.kuclab.vpn.tunnel.VpnState
+import dev.kuclab.vpn.warp.WarpStats
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var statusDot: View
-    private lateinit var statusPillText: TextView
-    private lateinit var statusHeadline: TextView
-    private lateinit var statusSubline: TextView
-    private lateinit var powerButton: AppCompatImageButton
-    private lateinit var nodeHost: TextView
-    private lateinit var nodeMeta: TextView
-    private lateinit var poolCount: TextView
-    private lateinit var poolSub: TextView
+    private lateinit var revText: TextView
+    private lateinit var lamp: View
+    private lateinit var linkState: TextView
+    private lateinit var linkSub: TextView
+    private lateinit var endpointVal: TextView
+    private lateinit var relayVal: TextView
+    private lateinit var handshakeVal: TextView
+    private lateinit var rxVal: TextView
+    private lateinit var txVal: TextView
+    private lateinit var accountVal: TextView
     private lateinit var logText: TextView
     private lateinit var logScroll: ScrollView
-    private lateinit var connectButton: MaterialButton
+    private lateinit var engageButton: MaterialButton
 
     private val vpnPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -47,21 +48,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        statusDot = findViewById(R.id.statusDot)
-        statusPillText = findViewById(R.id.statusPillText)
-        statusHeadline = findViewById(R.id.statusHeadline)
-        statusSubline = findViewById(R.id.statusSubline)
-        powerButton = findViewById(R.id.powerButton)
-        nodeHost = findViewById(R.id.nodeHost)
-        nodeMeta = findViewById(R.id.nodeMeta)
-        poolCount = findViewById(R.id.poolCount)
-        poolSub = findViewById(R.id.poolSub)
+        revText = findViewById(R.id.revText)
+        lamp = findViewById(R.id.lamp)
+        linkState = findViewById(R.id.linkState)
+        linkSub = findViewById(R.id.linkSub)
+        endpointVal = findViewById(R.id.endpointVal)
+        relayVal = findViewById(R.id.relayVal)
+        handshakeVal = findViewById(R.id.handshakeVal)
+        rxVal = findViewById(R.id.rxVal)
+        txVal = findViewById(R.id.txVal)
+        accountVal = findViewById(R.id.accountVal)
         logText = findViewById(R.id.logText)
         logScroll = findViewById(R.id.logScroll)
-        connectButton = findViewById(R.id.connectButton)
+        engageButton = findViewById(R.id.engageButton)
 
-        connectButton.setOnClickListener { onConnectClicked() }
-        powerButton.setOnClickListener { onConnectClicked() }
+        revText.text = "REV ${appVersion()}"
+        engageButton.setOnClickListener { onEngageClicked() }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
@@ -77,7 +79,7 @@ class MainActivity : AppCompatActivity() {
         observeState()
     }
 
-    private fun onConnectClicked() {
+    private fun onEngageClicked() {
         val current = VpnCoreService.state.value
         if (current is VpnState.Connected || current is VpnState.Preparing) {
             stopVpnService()
@@ -108,16 +110,7 @@ class MainActivity : AppCompatActivity() {
                     VpnCoreService.state.collect { renderState(it) }
                 }
                 launch {
-                    VpnCoreService.poolSnapshot.collect { snap ->
-                        val live = snap?.liveCount ?: 0
-                        val known = snap?.totalKnown ?: 0
-                        poolCount.text = live.toString()
-                        poolSub.text = if (snap == null || (live == 0 && known == 0)) {
-                            getString(R.string.pool_idle_hint)
-                        } else {
-                            getString(R.string.pool_known, known)
-                        }
-                    }
+                    VpnCoreService.stats.collect { renderStats(it) }
                 }
                 launch {
                     VpnCoreService.log.collect { log ->
@@ -132,89 +125,123 @@ class MainActivity : AppCompatActivity() {
     private fun renderState(state: VpnState) {
         when (state) {
             is VpnState.Idle -> {
-                setStatus(R.string.pill_idle, R.color.status_idle)
-                statusHeadline.setText(R.string.hero_idle_title)
-                statusSubline.setText(R.string.hero_idle_sub)
-                powerButton.isSelected = false
-                powerButton.imageTintList = tint(R.color.power_icon_off)
-                nodeHost.setText(R.string.node_empty)
-                nodeMeta.setText(R.string.node_empty)
-                setButtonPrimary(getString(R.string.connect))
+                setLink(R.string.link_down, R.color.faint)
+                linkSub.setText(R.string.sub_idle)
+                endpointVal.setText(R.string.dash)
+                relayVal.setText(R.string.dash)
+                accountVal.setText(R.string.dash)
+                setButtonEngage(getString(R.string.engage))
             }
             is VpnState.Preparing -> {
-                setStatus(R.string.pill_preparing, R.color.status_warn)
-                statusHeadline.setText(R.string.hero_preparing_title)
-                statusSubline.setText(R.string.hero_preparing_sub)
-                powerButton.isSelected = false
-                powerButton.imageTintList = tint(R.color.status_warn)
-                setButtonGhost(getString(R.string.disconnect))
+                setLink(R.string.link_est, R.color.phosphor)
+                linkSub.setText(R.string.sub_est)
+                setButtonCut(getString(R.string.cut))
             }
             is VpnState.Connected -> {
-                val proxy = state.proxy
-                setStatus(R.string.pill_connected, R.color.status_ok)
-                statusHeadline.setText(R.string.hero_connected_title)
-                statusSubline.setText(R.string.hero_connected_sub)
-                powerButton.isSelected = true
-                powerButton.imageTintList = tint(R.color.accent)
-                nodeHost.text = "${proxy.host}:${proxy.port}"
-                val latency = if (proxy.latencyMs == Long.MAX_VALUE) {
-                    getString(R.string.node_empty)
-                } else {
-                    getString(R.string.latency_ms, proxy.latencyMs)
-                }
-                nodeMeta.text = getString(R.string.node_meta, proxy.protocol.name, latency)
-                setButtonGhost(getString(R.string.disconnect))
+                setLink(R.string.link_up, R.color.green)
+                linkSub.setText(R.string.sub_up)
+                endpointVal.text = state.endpoint
+                relayVal.text = state.resolvedIp
+                accountVal.text = state.accountShort
+                setButtonCut(getString(R.string.cut))
             }
             is VpnState.Failed -> {
-                setStatus(R.string.pill_failed, R.color.status_err)
-                statusHeadline.setText(R.string.hero_failed_title)
-                statusSubline.text = state.reason
-                powerButton.isSelected = false
-                powerButton.imageTintList = tint(R.color.power_icon_off)
-                nodeHost.setText(R.string.node_empty)
-                nodeMeta.setText(R.string.node_empty)
-                setButtonPrimary(getString(R.string.retry))
+                setLink(R.string.link_fault, R.color.red)
+                linkSub.text = state.reason
+                endpointVal.setText(R.string.dash)
+                relayVal.setText(R.string.dash)
+                accountVal.setText(R.string.dash)
+                setButtonEngage(getString(R.string.retry))
             }
         }
     }
 
-    private fun setStatus(labelRes: Int, colorRes: Int) {
-        statusPillText.setText(labelRes)
-        statusDot.backgroundTintList = tint(colorRes)
+    private fun renderStats(stats: WarpStats?) {
+        if (stats == null) {
+            handshakeVal.setText(R.string.dash)
+            rxVal.setText(R.string.dash)
+            txVal.setText(R.string.dash)
+            return
+        }
+        handshakeVal.text = if (stats.hasHandshake) {
+            formatAge(System.currentTimeMillis() / 1000 - stats.lastHandshakeSec)
+        } else {
+            getString(R.string.dash)
+        }
+        rxVal.text = formatBytes(stats.rxBytes)
+        txVal.text = formatBytes(stats.txBytes)
     }
 
-    private fun setButtonPrimary(label: String) {
-        connectButton.text = label
-        connectButton.backgroundTintList = tint(R.color.accent)
-        connectButton.setTextColor(ContextCompat.getColor(this, R.color.accent_ink))
-        connectButton.strokeWidth = 0
+    private fun setLink(labelRes: Int, colorRes: Int) {
+        linkState.setText(labelRes)
+        val color = ContextCompat.getColor(this, colorRes)
+        linkState.setTextColor(color)
+        lamp.backgroundTintList = ColorStateList.valueOf(color)
     }
 
-    private fun setButtonGhost(label: String) {
-        connectButton.text = label
-        connectButton.backgroundTintList = tint(android.R.color.transparent)
-        connectButton.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
-        connectButton.strokeColor = tint(R.color.btn_ghost_stroke)
-        connectButton.strokeWidth = resources.getDimensionPixelSize(R.dimen.btn_ghost_stroke)
+    private fun setButtonEngage(label: String) {
+        engageButton.text = label
+        engageButton.backgroundTintList = tint(R.color.red)
+        engageButton.setTextColor(ContextCompat.getColor(this, R.color.red_ink))
+        engageButton.strokeWidth = 0
+    }
+
+    private fun setButtonCut(label: String) {
+        engageButton.text = label
+        engageButton.backgroundTintList = tint(android.R.color.transparent)
+        engageButton.setTextColor(ContextCompat.getColor(this, R.color.red))
+        engageButton.strokeColor = tint(R.color.red)
+        engageButton.strokeWidth = (2 * resources.displayMetrics.density).toInt()
     }
 
     private fun tint(colorRes: Int): ColorStateList =
         ColorStateList.valueOf(ContextCompat.getColor(this, colorRes))
 
+    private fun appVersion(): String = try {
+        val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0)
+        }
+        info.versionName ?: "?"
+    } catch (_: Throwable) {
+        "?"
+    }
+
     private fun playEntryAnimation() {
         val views = listOf(
-            R.id.headerRow, R.id.heroCard, R.id.statsRow, R.id.logCard, R.id.connectButton,
+            R.id.unitRow, R.id.linkPanel, R.id.readoutPanel, R.id.logPanel, R.id.engageButton,
         ).map { findViewById<View>(it) }
         views.forEachIndexed { i, v ->
             v.alpha = 0f
-            v.translationY = 28f
+            v.translationY = 18f
             v.animate()
                 .alpha(1f)
                 .translationY(0f)
-                .setStartDelay(70L * i)
-                .setDuration(420L)
+                .setStartDelay(60L * i)
+                .setDuration(200L)
                 .setInterpolator(DecelerateInterpolator())
                 .start()
+        }
+    }
+
+    companion object {
+        fun formatBytes(n: Long): String {
+            if (n < 1024) return "$n B"
+            val kb = n / 1024.0
+            if (kb < 1024) return String.format(java.util.Locale.US, "%.1f KB", kb)
+            val mb = kb / 1024.0
+            if (mb < 1024) return String.format(java.util.Locale.US, "%.1f MB", mb)
+            return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
+        }
+
+        fun formatAge(ageSec: Long): String {
+            if (ageSec < 0) return "—"
+            if (ageSec < 90) return "${ageSec}S"
+            val m = ageSec / 60
+            if (m < 90) return "${m}M"
+            return "${m / 60}H"
         }
     }
 }

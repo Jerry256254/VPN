@@ -4,9 +4,12 @@ import android.content.Context
 import android.net.LocalServerSocket
 import android.net.LocalSocket
 import android.os.ParcelFileDescriptor
-import dev.kuclab.vpn.proxy.ProxyEndpoint
+import dev.kuclab.vpn.warp.WarpConfig
+import dev.kuclab.vpn.warp.WarpStats
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.BufferedReader
@@ -16,40 +19,68 @@ import kotlin.random.Random
 
 sealed class TunnelEvent {
     data class Log(val line: String) : TunnelEvent()
-    data class Exited(val proxy: ProxyEndpoint, val exitCode: Int) : TunnelEvent()
+    data class Stats(val stats: WarpStats) : TunnelEvent()
+    data class Exited(val exitCode: Int) : TunnelEvent()
 }
 
 /**
- * Owns exactly one running tun2socks process, wired to the VpnService's TUN
- * file descriptor via fdbridge (see fdbridge/main.go). Neither native binary
- * requires the NDK: both are pure-Go static Linux binaries, launched the
- * same way shadowsocks-android/v2rayNG launch their bundled cores, packaged
- * as jniLibs so PackageManager extracts them as executable files.
+ * Owns exactly one running `libwgtunnel.so run` process (wireguard-go
+ * userspace device), wired to the VpnService's TUN file descriptor: the fd
+ * is handed over an abstract Unix socket via SCM_RIGHTS, the same technique
+ * as Clash for Android / Matsuri. The binary is a pure-Go static executable,
+ * no NDK involved, packaged as jniLibs so PackageManager extracts it as an
+ * executable file.
+ *
+ * Also owns WARP enrollment: on first run (or after identity rotation) it
+ * executes `libwgtunnel.so register` and stores the resulting config in the
+ * app-private files dir. One identity per install, reused across connects.
  *
  * The VPN's ParcelFileDescriptor is NOT owned/closed by this class - closing
  * it tears down the whole TUN interface, so it must outlive individual
- * tun2socks process restarts (proxy rotation, crashes) and is only closed by
- * VpnCoreService when the user disconnects.
+ * process restarts and is only closed by VpnCoreService on disconnect.
  */
 class TunnelController(
     private val context: Context,
     private val onEvent: (TunnelEvent) -> Unit,
 ) {
     private var process: Process? = null
-    private var currentProxy: ProxyEndpoint? = null
+
+    @Volatile
+    private var tunnelUp = false
+
+    /** Resolved relay address from the TUNNEL-UP line, valid after start(). */
+    @Volatile
+    var resolvedEndpoint: String = ""
+        private set
+
+    /** Config the running tunnel was started with, valid after start(). */
+    @Volatile
+    var config: WarpConfig? = null
+        private set
 
     private val nativeLibDir: String
         get() = context.applicationInfo.nativeLibraryDir
 
-    suspend fun start(tunFd: ParcelFileDescriptor, proxy: ProxyEndpoint): Boolean = coroutineScope {
-        val sockName = "fpvpn_" + System.currentTimeMillis() + "_" + Random.nextInt(10000)
-        val fdbridgeBin = File(nativeLibDir, "libfdbridge.so")
-        val tun2socksBin = File(nativeLibDir, "libtun2socks.so")
-        if (!fdbridgeBin.exists() || !tun2socksBin.exists()) {
-            onEvent(TunnelEvent.Log("native binaries missing under $nativeLibDir"))
+    private val configFile: File
+        get() = File(context.filesDir, "warp/warp.json")
+
+    suspend fun start(tunFd: ParcelFileDescriptor): Boolean = coroutineScope {
+        tunnelUp = false
+        resolvedEndpoint = ""
+
+        val bin = File(nativeLibDir, "libwgtunnel.so")
+        if (!bin.exists()) {
+            onEvent(TunnelEvent.Log("native core missing under $nativeLibDir"))
             return@coroutineScope false
         }
 
+        val cfg = WarpConfig.load(configFile) ?: run {
+            onEvent(TunnelEvent.Log("no warp identity, enrolling…"))
+            enroll(bin) ?: return@coroutineScope false
+        }
+        config = cfg
+
+        val sockName = "kuclab_" + System.currentTimeMillis() + "_" + Random.nextInt(10000)
         val serverSocket = try {
             LocalServerSocket(sockName)
         } catch (t: Throwable) {
@@ -57,18 +88,10 @@ class TunnelController(
             return@coroutineScope false
         }
 
-        val args = mutableListOf(
-            fdbridgeBin.absolutePath,
-            sockName,
-            tun2socksBin.absolutePath,
-            "--proxy", proxy.toTun2socksProxyUrl(),
-            "--mtu", "1500",
-            "--loglevel", "warning",
-            "--udp-timeout", "30s",
-        )
-
         val proc = try {
-            ProcessBuilder(args)
+            ProcessBuilder(
+                listOf(bin.absolutePath, "run", sockName, "--config", configFile.absolutePath),
+            )
                 .redirectErrorStream(true)
                 .directory(context.filesDir)
                 .start()
@@ -78,7 +101,6 @@ class TunnelController(
             return@coroutineScope false
         }
         process = proc
-        currentProxy = proxy
         pumpOutput(proc)
 
         val handedOff = withTimeoutOrNull(5000) {
@@ -94,15 +116,77 @@ class TunnelController(
             return@coroutineScope false
         }
 
-        watchExit(proc, proxy)
-        onEvent(TunnelEvent.Log("tunnel up via ${proxy.protocol} ${proxy.host}:${proxy.port}"))
+        // The handoff only proves the fd was sent; TUNNEL-UP proves the
+        // WireGuard device is actually configured and running.
+        val deadlineMs = System.currentTimeMillis() + 12_000
+        while (!tunnelUp && System.currentTimeMillis() < deadlineMs) {
+            if (!proc.isAlive) break
+            delay(100)
+        }
+        if (!tunnelUp) {
+            onEvent(TunnelEvent.Log("tunnel process never came up (exit=${proc.exitValueSafe()})"))
+            proc.destroy()
+            return@coroutineScope false
+        }
+
+        watchExit(proc)
+        onEvent(TunnelEvent.Log("tunnel up via wireguard ${cfg.endpoint} ($resolvedEndpoint)"))
         true
     }
 
     fun stop() {
         process?.destroy()
         process = null
-        currentProxy = null
+    }
+
+    private suspend fun enroll(bin: File): WarpConfig? {
+        val proc = try {
+            ProcessBuilder(listOf(bin.absolutePath, "register"))
+                .redirectErrorStream(true)
+                .directory(context.filesDir)
+                .start()
+        } catch (t: Throwable) {
+            onEvent(TunnelEvent.Log("enroll launch failed: ${t.message}"))
+            return null
+        }
+        val outDeferred = coroutineScope {
+            async(Dispatchers.IO) {
+                try {
+                    proc.inputStream.bufferedReader().readText()
+                } catch (_: Throwable) {
+                    ""
+                }
+            }
+        }
+        val finished = withTimeoutOrNull(45_000) {
+            withContext(Dispatchers.IO) { proc.waitFor() }
+            true
+        } ?: false
+        if (!finished) {
+            proc.destroy()
+            onEvent(TunnelEvent.Log("enroll timed out"))
+            return null
+        }
+        val out = outDeferred.await()
+        if (proc.exitValue() != 0) {
+            val tail = out.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.lastOrNull()
+            onEvent(TunnelEvent.Log("enroll failed: ${tail ?: "exit ${proc.exitValue()}"}"))
+            return null
+        }
+        val cfg = WarpConfig.parseStdout(out)
+        if (cfg == null) {
+            onEvent(TunnelEvent.Log("enroll failed: no config in output"))
+            return null
+        }
+        try {
+            configFile.parentFile?.mkdirs()
+            configFile.writeText(cfg.toJson().toString())
+        } catch (t: Throwable) {
+            onEvent(TunnelEvent.Log("enroll failed: cannot store identity (${t.message})"))
+            return null
+        }
+        onEvent(TunnelEvent.Log("warp identity enrolled (${cfg.shortAccount})"))
+        return cfg
     }
 
     private fun handOffFd(serverSocket: LocalServerSocket, tunFd: ParcelFileDescriptor): Boolean {
@@ -121,9 +205,27 @@ class TunnelController(
 
     private fun pumpOutput(proc: Process) {
         Thread {
+            var handshakeLogged = false
             try {
                 BufferedReader(InputStreamReader(proc.inputStream)).useLines { lines ->
-                    lines.forEach { onEvent(TunnelEvent.Log("tun2socks: $it")) }
+                    lines.forEach { line ->
+                        when {
+                            line.startsWith("TUNNEL-UP") -> {
+                                resolvedEndpoint = line.substringAfter("endpoint=", "").trim()
+                                tunnelUp = true
+                            }
+                            line.startsWith("STATS ") -> {
+                                WarpStats.parse(line)?.let { st ->
+                                    onEvent(TunnelEvent.Stats(st))
+                                    if (!handshakeLogged && st.hasHandshake) {
+                                        handshakeLogged = true
+                                        onEvent(TunnelEvent.Log("wireguard handshake ok"))
+                                    }
+                                }
+                            }
+                            line.isNotBlank() -> onEvent(TunnelEvent.Log("wg: $line"))
+                        }
+                    }
                 }
             } catch (_: Throwable) {
                 // process pipe closed on exit, nothing to do
@@ -131,7 +233,7 @@ class TunnelController(
         }.apply { isDaemon = true }.start()
     }
 
-    private fun watchExit(proc: Process, proxy: ProxyEndpoint) {
+    private fun watchExit(proc: Process) {
         Thread {
             val code = try {
                 proc.waitFor()
@@ -139,7 +241,13 @@ class TunnelController(
                 -1
             }
             if (process === proc) process = null
-            onEvent(TunnelEvent.Exited(proxy, code))
+            onEvent(TunnelEvent.Exited(code))
         }.apply { isDaemon = true }.start()
+    }
+
+    private fun Process.exitValueSafe(): Int = try {
+        exitValue()
+    } catch (_: Throwable) {
+        -999
     }
 }
